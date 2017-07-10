@@ -1,8 +1,0 @@
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\KinectCount01.exe.config
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\KinectCount01.exe
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\KinectCount01.pdb
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\Microsoft.Kinect.dll
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\Microsoft.Kinect.xml
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.csprojResolveAssemblyReference.cache
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.exe
-C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.pdb
