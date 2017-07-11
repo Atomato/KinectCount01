@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 using Microsoft.Kinect;
 using System.Windows.Media.Media3D; //PresentationCore 어셈블리 참조
-using System.Threading;
 
 namespace KinectCount01
 {
@@ -16,19 +15,15 @@ namespace KinectCount01
         private KinectSensor _KinectDevice;
         private Skeleton[] _FrameSkeletons;
         public Boolean IsSkeletonFrameReady = false;
-        private Thread PollThread;
         #endregion Member Variables
 
         #region Constructor
         public KinectClass()
         {
-            /*
+            
             KinectSensor.KinectSensors.StatusChanged += KinectSensors_StatusChanged;
             KinectDevice = KinectSensor.KinectSensors.FirstOrDefault(x => x.Status == KinectStatus.Connected);
-            */
-            PollThread = new Thread(new ThreadStart(Run));
-            PollThread.Start();
-
+            
             JointPositions = new Point3D[20];
         }
         #endregion Constructor
@@ -52,7 +47,6 @@ namespace KinectCount01
             }
         }
 
-        /*
         /// <summary>
         /// 키넥트 status가 바뀌었을 때의 이벤트 핸들러
         /// </summary>
@@ -78,7 +72,6 @@ namespace KinectCount01
                     break;
             }
         }
-        */
 
         /// <summary>
         /// 스켈레톤 프레임이 준비되었을 때 실행
