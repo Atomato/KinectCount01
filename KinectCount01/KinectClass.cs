@@ -15,6 +15,7 @@ namespace KinectCount01
         private KinectSensor _KinectDevice;
         private short[] _DepthPixelData;
         private Skeleton[] _FrameSkeletons;
+        public Boolean IsDepthEncodingReady = false;
         public Boolean IsSkeletonFrameReady = false;
         #endregion Member Variables
 
@@ -104,19 +105,26 @@ namespace KinectCount01
             {
                 depthFrame.CopyPixelDataTo(_DepthPixelData);
                 int playerIndex;
+                int j;
+                int k;
                 const int bitPerByte = 8;
-                byte[] encodedDepth = new byte[depthFrame.Width * depthFrame.Height / bitPerByte];
 
                 for (int i = 0; i < _DepthPixelData.Length; i++)
                 {
                     playerIndex = _DepthPixelData[i] & DepthImageFrame.PlayerIndexBitmask;
-                    int j = i / bitPerByte;
+                    j = i / bitPerByte;
+                    k = i % bitPerByte;
 
                     if (playerIndex != 0)
                     {
-                        encodedDepth[j] |= (byte) (1 << j);
+                        EncodedDepth[j] |= (byte) (1 << k);
+                    }
+                    else
+                    {
+                        EncodedDepth[j] &= (byte)(~(1 << k));
                     }
                 }
+                IsDepthEncodingReady = true;
             }
         }
 
@@ -163,11 +171,12 @@ namespace KinectCount01
                         if (this._KinectDevice.Status == KinectStatus.Connected)
                         {
                             _KinectDevice.ColorStream.Enable();
-                            _KinectDevice.DepthStream.Enable(DepthImageFormat.Resolution320x240Fps30);
+                            _KinectDevice.DepthStream.Enable(DepthImageFormat.Resolution80x60Fps30);
                             _KinectDevice.SkeletonStream.Enable();
                             DepthImageStream depthStream = this._KinectDevice.DepthStream;
                             this._FrameSkeletons = new Skeleton[this._KinectDevice.SkeletonStream.FrameSkeletonArrayLength];
                             _DepthPixelData = new short[depthStream.FramePixelDataLength];
+                            EncodedDepth = new byte[depthStream.FramePixelDataLength / 8];
                             this.KinectDevice.AllFramesReady += KinectDevice_AllFramesReady;
                             this._KinectDevice.Start();
                         }
@@ -175,6 +184,7 @@ namespace KinectCount01
                 }
             }
         }
+        public byte[] EncodedDepth { get; set; }
         public Point3D[] JointPositions { get; set; }
         #endregion Properties
     }

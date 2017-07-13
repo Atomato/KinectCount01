@@ -62,6 +62,7 @@ namespace KinectCount01
                         // 클라이언트에서 "y\n"를 보내면 조인트 좌표 보냄
                         if (data.Equals("y\n"))
                         {
+                            /*
                             if (sensor.IsSkeletonFrameReady)
                             {
                                 // 클라이언트에 보낼 데이터. "/"은 구분 단위
@@ -92,6 +93,20 @@ namespace KinectCount01
                                 byte[] msg = Encoding.ASCII.GetBytes("n\n");
                                 stream.Write(msg, 0, msg.Length);
                             }
+                            */
+
+                            if (sensor.IsDepthEncodingReady)
+                            {
+                                stream.Write(sensor.EncodedDepth, 0, sensor.EncodedDepth.Length);
+                                //byte[] endMsg = Encoding.ASCII.GetBytes("ab");
+                                //stream.Write(endMsg, 0, endMsg.Length);
+                                sensor.IsDepthEncodingReady = false;
+                            }
+                            else
+                            {
+                                byte[] msg = Encoding.ASCII.GetBytes("n\n");
+                                stream.Write(msg, 0, msg.Length);
+                            }
                         }
                     }
 
@@ -102,6 +117,10 @@ namespace KinectCount01
             catch (SocketException e)
             {
                 Console.WriteLine("SocketException: {0}", e);
+            }
+            catch (System.IO.IOException e)
+            {
+                Console.WriteLine("IOException: {0}", e);
             }
             finally
             {
