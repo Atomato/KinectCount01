@@ -35,6 +35,8 @@ namespace KinectCount01
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
+                Byte[] sendMsg = new Byte[640];
+                Byte[] skelBytes;
 
                 // Enter the listening loop.
                 while (true)
@@ -95,12 +97,32 @@ namespace KinectCount01
                             }
                             */
 
-                            if (sensor.IsDepthEncodingReady)
+                            if (sensor.IsDepthEncodingReady && sensor.IsSkeletonFrameReady)
                             {
-                                stream.Write(sensor.EncodedDepth, 0, sensor.EncodedDepth.Length);
-                                //byte[] endMsg = Encoding.ASCII.GetBytes("ab");
-                                //stream.Write(endMsg, 0, endMsg.Length);
+                                Buffer.BlockCopy(sensor.EncodedDepth, 0, sendMsg, 0, sensor.EncodedDepth.Length);
+                                
+
+                                // 클라이언트에 보낼 스켈레톤 데이터
+                                foreach (var value in Enum.GetValues(typeof(JointType)))
+                                {
+                                    skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].X);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, 600 + 2 * (int)value, 1);
+
+                                    skelBytes = BitConverter.GetBytes((short)sensor.JointPositions[(int)value].Y);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, 600 + 2 * (int)value +1, 1);
+                                }
+
+                                // 카운트 업하면 콘솔에 표시
+                                if (SquatCount.IsCountUp)
+                                {
+                                    Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
+                                    SquatCount.IsCountUp = false;
+                                    SquatCount.CountNumber--;
+                                }
+
+                                stream.Write(sendMsg, 0, sendMsg.Length);
                                 sensor.IsDepthEncodingReady = false;
+                                sensor.IsSkeletonFrameReady = false;
                             }
                             else
                             {
