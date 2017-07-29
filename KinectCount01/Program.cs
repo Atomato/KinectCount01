@@ -32,11 +32,15 @@ namespace KinectCount01
                 server.Start();
 
                 // Buffer for reading data
+                const int depthBytesNum = 600;
+                const int skelBytesNum = 40;
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
-                Byte[] sendMsg = new Byte[640];
+                Byte[] sendMsg = new Byte[depthBytesNum + skelBytesNum];
                 Byte[] skelBytes;
+                Byte[] rejectMsg = new Byte[1]; 
+                rejectMsg[0] = 0xFF; //데이터 보낼 준비가 안될 때 보낼 메시지
 
                 // Enter the listening loop.
                 while (true)
@@ -54,7 +58,6 @@ namespace KinectCount01
                     NetworkStream stream = client.GetStream();
 
                     int i;
-
                     // Loop to receive all the data sent by the client.
                     while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
                     {
@@ -64,39 +67,6 @@ namespace KinectCount01
                         // 클라이언트에서 "y\n"를 보내면 조인트 좌표 보냄
                         if (data.Equals("y\n"))
                         {
-                            /*
-                            if (sensor.IsSkeletonFrameReady)
-                            {
-                                // 클라이언트에 보낼 데이터. "/"은 구분 단위
-                                foreach (var value in Enum.GetValues(typeof(JointType)))
-                                {
-                                    txData.Append($"{sensor.JointPositions[(int)value].X}/{sensor.JointPositions[(int)value].Y}/");
-                                }
-                                txData.Append($"{SquatCount.ThresholdPoint,0:F0}/{SquatCount.CountNumber}\n");
-
-                                byte[] msg = Encoding.ASCII.GetBytes(txData.ToString());
-
-                                // Send back a response.
-                                stream.Write(msg, 0, msg.Length);
-
-                                txData.Clear(); // StringBuilder 데이터 클리어
-
-                                // 카운트 업하면 콘솔에 표시
-                                if (SquatCount.IsCountUp)
-                                {
-                                    Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
-                                    SquatCount.IsCountUp = false;
-                                    SquatCount.CountNumber--;
-                                }
-                                sensor.IsSkeletonFrameReady = false;
-                            }
-                            else
-                            {
-                                byte[] msg = Encoding.ASCII.GetBytes("n\n");
-                                stream.Write(msg, 0, msg.Length);
-                            }
-                            */
-
                             if (sensor.IsDepthEncodingReady && sensor.IsSkeletonFrameReady)
                             {
                                 Buffer.BlockCopy(sensor.EncodedDepth, 0, sendMsg, 0, sensor.EncodedDepth.Length);
@@ -126,8 +96,7 @@ namespace KinectCount01
                             }
                             else
                             {
-                                byte[] msg = Encoding.ASCII.GetBytes("n\n");
-                                stream.Write(msg, 0, msg.Length);
+                                stream.Write(rejectMsg, 0, rejectMsg.Length); //데이터 준비 안됨
                             }
                         }
                     }
