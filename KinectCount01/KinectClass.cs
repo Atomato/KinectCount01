@@ -66,35 +66,10 @@ namespace KinectCount01
         {
             using (DepthImageFrame depthFrame = e.OpenDepthImageFrame())
             {
-                using (SkeletonFrame frame = e.OpenSkeletonFrame())
+                using (SkeletonFrame skeletonframe = e.OpenSkeletonFrame())
                 {
                     DepthEncoding(KinectDevice, depthFrame);
-
-                    if (frame != null)
-                    {
-                        Skeleton skeleton;
-
-                        frame.CopySkeletonDataTo(this._FrameSkeletons);
-
-                        for (int i = 0; i < this._FrameSkeletons.Length; i++)
-                        {
-                            skeleton = this._FrameSkeletons[i];
-
-                            // 스켈레톤 트래킹 되고 있는 상태인가
-                            if (skeleton.TrackingState == SkeletonTrackingState.Tracked)
-                            {
-                                // 모든 관절 위치 
-                                foreach (var value in Enum.GetValues(typeof(JointType)))
-                                {
-                                    JointPositions[(int)value] = GetJointPoint(skeleton.Joints[(JointType)value]);
-                                }
-
-                                // 머리 좌표와 엉덩이 좌표로 카운팅함
-                                SquatCount.Count(JointPositions[(int)JointType.Head], JointPositions[(int)JointType.HipCenter]);
-                                IsSkeletonFrameReady = true;
-                            }
-                        }
-                    }
+                    SkeletonEncoding(KinectDevice, skeletonframe);
                 }
             }
         }
@@ -126,6 +101,62 @@ namespace KinectCount01
                 }
                 IsDepthEncodingReady = true;
             }
+        }
+
+        private void SkeletonEncoding(KinectSensor kinectDevice, SkeletonFrame skeletonframe)
+        {
+            if (kinectDevice != null && skeletonframe != null)
+            {
+                skeletonframe.CopySkeletonDataTo(this._FrameSkeletons);
+                Skeleton skeleton = GetPrimarySkeleton(this._FrameSkeletons);
+
+                if (skeleton != null)
+                {
+                    // 모든 관절 위치 
+                    foreach (var value in Enum.GetValues(typeof(JointType)))
+                    {
+                        JointPositions[(int)value] = GetJointPoint(skeleton.Joints[(JointType)value]);
+                    }
+
+                    // 머리 좌표와 엉덩이 좌표로 카운팅함
+                    SquatCount.Count(JointPositions[(int)JointType.Head], JointPositions[(int)JointType.HipCenter]);
+                    IsSkeletonFrameReady = true;
+                }                
+            }
+        }
+
+        /// <summary>
+        /// 가장 가까운 스켈레톤 선택
+        /// </summary>
+        /// <param name="skeletons"></param>
+        /// <returns></returns>
+        private static Skeleton GetPrimarySkeleton(Skeleton[] skeletons)
+        {
+            Skeleton skeleton = null;
+
+            if (skeletons != null)
+            {
+                //Find the closest skeleton       
+                for (int i = 0; i < skeletons.Length; i++)
+                {
+                    if (skeletons[i].TrackingState == SkeletonTrackingState.Tracked)
+                    {
+                        if (skeleton == null)
+                        {
+                            skeleton = skeletons[i];
+                        }
+                        else
+                        {
+                            if (skeleton.Position.Z > skeletons[i].Position.Z)
+                            {
+                                skeleton = skeletons[i];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return skeleton;
         }
 
         /// <summary>

@@ -58,8 +58,7 @@ namespace KinectCount01
                 if (!IsHeadDown)
                 {
                     CountNumber++;
-                    //Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
-                    Console.WriteLine($"Head is at {Head}");
+                    Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
                     IsCountUp = true;
                     IsHeadDown = true;
                 }
@@ -69,7 +68,6 @@ namespace KinectCount01
                 if (IsHeadDown)
                 {
                     IsHeadDown = false;
-                    Console.WriteLine($"Head is at {Head}");
                 }
             }
         }
