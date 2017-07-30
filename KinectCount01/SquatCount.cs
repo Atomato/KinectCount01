@@ -16,8 +16,9 @@ namespace KinectCount01
         private static double HipCenterPoint;
         private static int SummationCount;
         private static bool IsHeadDown;
-        public static double ThresholdPoint;
-        public static int CountNumber;
+        private static int CountNumber;
+        private static double ThresholdPoint;
+        public static byte[] countBytes = new byte[2];
         public static bool IsCountUp;
         #endregion Member Variables
 
@@ -40,6 +41,7 @@ namespace KinectCount01
 
                         ThresholdPoint = (HeadPoint + HipCenterPoint)/2; // 카운트 문턱
                         Console.WriteLine($"Count Ready and threshold point is {ThresholdPoint,0:F0}");
+                        countBytes = BitConverter.GetBytes((short)SquatCount.ThresholdPoint);
                     }
                 }
             }
@@ -56,13 +58,20 @@ namespace KinectCount01
                 if (!IsHeadDown)
                 {
                     CountNumber++;
+                    //Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
+                    Console.WriteLine($"Head is at {Head}");
                     IsCountUp = true;
                     IsHeadDown = true;
                 }
             }
             else
+            {
                 if (IsHeadDown)
+                {
                     IsHeadDown = false;
+                    Console.WriteLine($"Head is at {Head}");
+                }
+            }
         }
         #endregion Methods
     }

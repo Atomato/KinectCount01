@@ -34,10 +34,12 @@ namespace KinectCount01
                 // Buffer for reading data
                 const int depthBytesNum = 600;
                 const int skelBytesNum = 40;
+                const int countOffset = depthBytesNum + skelBytesNum;
+                const int sendMsgLength = countOffset + 1;
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
-                Byte[] sendMsg = new Byte[depthBytesNum + skelBytesNum];
+                Byte[] sendMsg = new Byte[sendMsgLength];
                 Byte[] skelBytes;
                 Byte[] rejectMsg = new Byte[1]; 
                 rejectMsg[0] = 0xFF; //데이터 보낼 준비가 안될 때 보낼 메시지
@@ -76,18 +78,24 @@ namespace KinectCount01
                                 foreach (var value in Enum.GetValues(typeof(JointType)))
                                 {
                                     skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].X);
-                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, 600 + 2 * (int)value, 1);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, depthBytesNum + 2*(int)value, 1);
 
-                                    skelBytes = BitConverter.GetBytes((short)sensor.JointPositions[(int)value].Y);
-                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, 600 + 2 * (int)value +1, 1);
+                                    skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].Y);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, depthBytesNum + 2*(int)value + 1, 1);
                                 }
 
-                                // 카운트 업하면 콘솔에 표시
+                                // 카운트 업일 때
+                                
                                 if (SquatCount.IsCountUp)
                                 {
-                                    Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
+                                    SquatCount.countBytes[0] |= 0x80; //마지막 비트가 카운트 업을 나타냄
+                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset, 1);
+                                    SquatCount.countBytes[0] &= 0x7F;
                                     SquatCount.IsCountUp = false;
-                                    SquatCount.CountNumber--;
+                                }
+                                else
+                                {
+                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset, 1);
                                 }
 
                                 stream.Write(sendMsg, 0, sendMsg.Length);
