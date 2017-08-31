@@ -71,6 +71,16 @@ namespace KinectCount01
                 }
             }
         }
+
+        public static void InitializeThreshold()
+        {
+            InitialSetCount = 0;
+            HeadPoint = 0;
+            HipCenterPoint = 0;
+            SummationCount = 0;
+            ThresholdPoint = 0;
+            countBytes = BitConverter.GetBytes((short)SquatCount.ThresholdPoint);
+        }
         #endregion Methods
     }
 }

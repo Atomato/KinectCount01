@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 using Microsoft.Kinect;
 using System.Windows.Media.Media3D; //PresentationCore 어셈블리 참조
+using Microsoft.Speech.AudioFormat;
+using Microsoft.Speech.Recognition;
 
 namespace KinectCount01
 {
@@ -17,6 +19,12 @@ namespace KinectCount01
         private Skeleton[] _FrameSkeletons;
         public Boolean IsDepthEncodingReady = false;
         public Boolean IsSkeletonFrameReady = false;
+
+        /// <summary>
+        /// Speech recognition engine using audio data from Kinect.
+        /// </summary>
+        private SpeechRecognitionEngine speechEngine;
+        public Boolean IsInitialize = false;
         #endregion Member Variables
 
         #region Constructor
@@ -173,6 +181,52 @@ namespace KinectCount01
 
             return new Point3D(pointx, pointy, pointz);
         }
+
+        /// <summary>
+        /// Gets the metadata for the speech recognizer (acoustic model) most suitable to
+        /// process audio from Kinect device.
+        /// </summary>
+        /// <returns>
+        /// RecognizerInfo if found, <code>null</code> otherwise.
+        /// </returns>
+        private static RecognizerInfo GetKinectRecognizer()
+        {
+            foreach (RecognizerInfo recognizer in SpeechRecognitionEngine.InstalledRecognizers())
+            {
+                string value;
+                recognizer.AdditionalInfo.TryGetValue("Kinect", out value);
+                if ("True".Equals(value, StringComparison.OrdinalIgnoreCase) && "en-US".Equals(recognizer.Culture.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return recognizer;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Handler for recognized speech events.
+        /// </summary>
+        /// <param name="sender">object sending the event.</param>
+        /// <param name="e">event arguments.</param>
+        private void SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
+        {
+            // Speech utterance confidence below which we treat speech as if it hadn't been heard
+            const double ConfidenceThreshold = 0.3;
+
+            if (e.Result.Confidence >= ConfidenceThreshold)
+            {
+                switch (e.Result.Semantics.Value.ToString())
+                {
+                    case "INITIALIZE":
+                        Console.WriteLine("speech recognized");
+                        SquatCount.InitializeThreshold();
+                        IsInitialize = true;
+                        break;
+                }
+            }
+
+        }
         #endregion Methods
 
         #region Properties
@@ -192,6 +246,11 @@ namespace KinectCount01
                         _KinectDevice.DepthStream.Disable();
                         this._KinectDevice.SkeletonStream.Disable();
                         this._FrameSkeletons = null;
+
+                        _KinectDevice.AudioSource.Stop();
+                        this.speechEngine.SpeechRecognized -= SpeechRecognized;
+                        //this.speechEngine.SpeechRecognitionRejected -= SpeechRejected;
+                        this.speechEngine.RecognizeAsyncStop();
                     }
 
                     this._KinectDevice = value;
@@ -210,6 +269,32 @@ namespace KinectCount01
                             EncodedDepth = new byte[depthStream.FramePixelDataLength / 8];
                             this.KinectDevice.AllFramesReady += KinectDevice_AllFramesReady;
                             this._KinectDevice.Start();
+
+                            RecognizerInfo ri = GetKinectRecognizer();
+                            if (null != ri)
+                            {
+                                this.speechEngine = new SpeechRecognitionEngine(ri.Id);
+
+                                var directions = new Choices();
+                                directions.Add(new SemanticResultValue("initialize", "INITIALIZE"));
+                                
+                                var gb = new GrammarBuilder { Culture = ri.Culture };
+                                gb.Append(directions);
+                                
+                                var g = new Grammar(gb);
+                                speechEngine.LoadGrammar(g);
+
+                                speechEngine.SpeechRecognized += SpeechRecognized;
+                                //speechEngine.SpeechRecognitionRejected += SpeechRejected;
+
+                                // For long recognition sessions (a few hours or more), it may be beneficial to turn off adaptation of the acoustic model. 
+                                // This will prevent recognition accuracy from degrading over time.
+                                ////speechEngine.UpdateRecognizerSetting("AdaptationOn", 0);
+
+                                speechEngine.SetInputToAudioStream(
+                                    _KinectDevice.AudioSource.Start(), new SpeechAudioFormatInfo(EncodingFormat.Pcm, 16000, 16, 1, 32000, 2, null));
+                                speechEngine.RecognizeAsync(RecognizeMode.Multiple);
+                            }
                         }
                     }
                 }

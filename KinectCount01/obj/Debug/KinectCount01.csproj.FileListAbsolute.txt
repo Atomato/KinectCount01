@@ -6,3 +6,4 @@ C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\b
 C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.csprojResolveAssemblyReference.cache
 C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.exe
 C:\Users\Ato\documents\visual studio 2017\Projects\KinectCount01\KinectCount01\obj\Debug\KinectCount01.pdb
+C:\Users\Ato\Documents\Visual Studio 2017\Projects\KinectCount01\KinectCount01\bin\Debug\Microsoft.Speech.dll

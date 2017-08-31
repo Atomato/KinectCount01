@@ -35,13 +35,14 @@ namespace KinectCount01
                 const int depthBytesNum = 600;
                 const int skelBytesNum = 40;
                 const int countOffset = depthBytesNum + skelBytesNum;
-                const int sendMsgLength = countOffset + 1;
+                const int sendMsgLength = countOffset + 2;
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
                 Byte[] sendMsg = new Byte[sendMsgLength];
                 Byte[] skelBytes;
-                Byte[] rejectMsg = new Byte[1]; 
+                Byte[] rejectMsg = new Byte[1];
+                Byte[] initializeBytes = new byte[1];
                 rejectMsg[0] = 0xFF; //데이터 보낼 준비가 안될 때 보낼 메시지
 
                 // Enter the listening loop.
@@ -96,6 +97,20 @@ namespace KinectCount01
                                 else
                                 {
                                     Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset, 1);
+                                }
+
+                                if (sensor.IsInitialize)
+                                {
+                                    
+                                    initializeBytes[0] = 0x01;
+                                    Buffer.BlockCopy(initializeBytes, 0, sendMsg, countOffset+1, 1);
+                                    sensor.IsInitialize = false;
+                              
+                                }
+                                else
+                                {
+                                    initializeBytes[0] = 0x00;
+                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset + 1, 1);
                                 }
 
                                 stream.Write(sendMsg, 0, sendMsg.Length);
