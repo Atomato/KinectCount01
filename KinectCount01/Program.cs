@@ -31,18 +31,21 @@ namespace KinectCount01
                 // Start listening for client requests.
                 server.Start();
 
+                // buffer index
+                const int systemBytesNum = 1;
+                const int depthOffset = systemBytesNum;
+                int skelOffset = depthOffset + sensor.EncodedDepth.Length;
+                int countOffset = skelOffset + (2 * sensor.JointPositions.Length);
+                int sendMsgLength = countOffset + 1;
+
                 // Buffer for reading data
-                const int depthBytesNum = 600;
-                const int skelBytesNum = 40;
-                const int countOffset = depthBytesNum + skelBytesNum;
-                const int sendMsgLength = countOffset + 2;
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
                 Byte[] sendMsg = new Byte[sendMsgLength];
                 Byte[] skelBytes;
                 Byte[] rejectMsg = new Byte[1];
-                Byte[] initializeBytes = new byte[1];
+                Byte[] systemBytes = new byte[1];
                 rejectMsg[0] = 0xFF; //데이터 보낼 준비가 안될 때 보낼 메시지
 
                 // Enter the listening loop.
@@ -70,52 +73,50 @@ namespace KinectCount01
                         // 클라이언트에서 "y\n"를 보내면 조인트 좌표 보냄
                         if (data.Equals("y\n"))
                         {
-                            if (sensor.IsDepthEncodingReady && sensor.IsSkeletonFrameReady)
+                            if (sensor.isDepthEncodingReady && sensor.isSkeletonFrameReady)
                             {
-                                Buffer.BlockCopy(sensor.EncodedDepth, 0, sendMsg, 0, sensor.EncodedDepth.Length);
-                                
+                                systemBytes[0] = (byte)sensor.currentWorkoutType;
+                                if (sensor.isInitialize)
+                                {
+                                    systemBytes[0] |= 0x80;
+                                    Buffer.BlockCopy(systemBytes, 0, sendMsg, 0, 1);
+                                    sensor.isInitialize = false;
+                                }
+                                else
+                                {
+                                    systemBytes[0] &= 0x7F;
+                                    Buffer.BlockCopy(systemBytes, 0, sendMsg, 0, 1);
+                                }
 
+
+                                Buffer.BlockCopy(sensor.EncodedDepth, 0, sendMsg, depthOffset, sensor.EncodedDepth.Length);
+                                
                                 // 클라이언트에 보낼 스켈레톤 데이터
                                 foreach (var value in Enum.GetValues(typeof(JointType)))
                                 {
                                     skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].X);
-                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, depthBytesNum + 2*(int)value, 1);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, skelOffset + 2*(int)value, 1);
 
                                     skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].Y);
-                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, depthBytesNum + 2*(int)value + 1, 1);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, skelOffset + 2*(int)value + 1, 1);
                                 }
 
                                 // 카운트 업일 때
+                                if (WorkoutCounting.isCountUp)
+                                {
+                                    WorkoutCounting.countBytes[0] |= 0x80; //마지막 비트가 카운트 업을 나타냄
+                                    Buffer.BlockCopy(WorkoutCounting.countBytes, 0, sendMsg, countOffset, 1);
+                                    WorkoutCounting.countBytes[0] &= 0x7F;
+                                    WorkoutCounting.isCountUp = false;
+                                }
+                                else
+                                {
+                                    Buffer.BlockCopy(WorkoutCounting.countBytes, 0, sendMsg, countOffset, 1);
+                                } 
                                 
-                                if (SquatCount.IsCountUp)
-                                {
-                                    SquatCount.countBytes[0] |= 0x80; //마지막 비트가 카운트 업을 나타냄
-                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset, 1);
-                                    SquatCount.countBytes[0] &= 0x7F;
-                                    SquatCount.IsCountUp = false;
-                                }
-                                else
-                                {
-                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset, 1);
-                                }
-
-                                if (sensor.IsInitialize)
-                                {
-                                    
-                                    initializeBytes[0] = 0x01;
-                                    Buffer.BlockCopy(initializeBytes, 0, sendMsg, countOffset+1, 1);
-                                    sensor.IsInitialize = false;
-                              
-                                }
-                                else
-                                {
-                                    initializeBytes[0] = 0x00;
-                                    Buffer.BlockCopy(SquatCount.countBytes, 0, sendMsg, countOffset + 1, 1);
-                                }
-
                                 stream.Write(sendMsg, 0, sendMsg.Length);
-                                sensor.IsDepthEncodingReady = false;
-                                sensor.IsSkeletonFrameReady = false;
+                                sensor.isDepthEncodingReady = false;
+                                sensor.isSkeletonFrameReady = false;
                             }
                             else
                             {

@@ -11,20 +11,27 @@ using Microsoft.Speech.Recognition;
 
 namespace KinectCount01
 {
+    public enum WorkoutType
+    {
+        Squat = 0,
+        BicepsCurl = 1
+    }
+
     class KinectClass
     {
         #region Member Variables
         private KinectSensor _KinectDevice;
         private short[] _DepthPixelData;
         private Skeleton[] _FrameSkeletons;
-        public Boolean IsDepthEncodingReady = false;
-        public Boolean IsSkeletonFrameReady = false;
+        public WorkoutType currentWorkoutType = WorkoutType.Squat;
+        public bool isDepthEncodingReady = false;
+        public bool isSkeletonFrameReady = false;
 
         /// <summary>
         /// Speech recognition engine using audio data from Kinect.
         /// </summary>
         private SpeechRecognitionEngine speechEngine;
-        public Boolean IsInitialize = false;
+        public bool isInitialize = false;
         #endregion Member Variables
 
         #region Constructor
@@ -35,6 +42,7 @@ namespace KinectCount01
             KinectDevice = KinectSensor.KinectSensors.FirstOrDefault(x => x.Status == KinectStatus.Connected);
             
             JointPositions = new Point3D[20];
+            
         }
         #endregion Constructor
 
@@ -107,7 +115,7 @@ namespace KinectCount01
                         EncodedDepth[j] &= (byte)(~(1 << k));
                     }
                 }
-                IsDepthEncodingReady = true;
+                isDepthEncodingReady = true;
             }
         }
 
@@ -126,9 +134,8 @@ namespace KinectCount01
                         JointPositions[(int)value] = GetJointPoint(skeleton.Joints[(JointType)value]);
                     }
 
-                    // 머리 좌표와 엉덩이 좌표로 카운팅함
-                    SquatCount.Count(JointPositions[(int)JointType.Head], JointPositions[(int)JointType.HipCenter]);
-                    IsSkeletonFrameReady = true;
+                    WorkoutCounting.Count(JointPositions, currentWorkoutType);
+                    isSkeletonFrameReady = true;
                 }                
             }
         }
@@ -211,21 +218,64 @@ namespace KinectCount01
         /// <param name="e">event arguments.</param>
         private void SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
         {
+            var result = e.Result;
             // Speech utterance confidence below which we treat speech as if it hadn't been heard
-            const double ConfidenceThreshold = 0.3;
+            const double ConfidenceThreshold = 0.25;
 
-            if (e.Result.Confidence >= ConfidenceThreshold)
+            if (result.Confidence >= ConfidenceThreshold)
             {
-                switch (e.Result.Semantics.Value.ToString())
+                if (result.Words[0].Text == "initialize")
                 {
-                    case "INITIALIZE":
-                        Console.WriteLine("speech recognized");
-                        SquatCount.InitializeThreshold();
-                        IsInitialize = true;
-                        break;
+                    Console.WriteLine("speech recognized: initialize");
+                    WorkoutCounting.Initialize();
+                    isInitialize = true;
+                }
+                if (result.Words[0].Text == "change")
+                {
+                    var workoutType = result.Words[2].Text;
+                    switch (workoutType)
+                    {
+                        case "squat":
+                            currentWorkoutType = WorkoutType.Squat;
+                            WorkoutCounting.Initialize();
+                            isInitialize = true;
+                            Console.WriteLine("speech recognized: change to squat");
+                            break;
+                        case "biceps":
+                            currentWorkoutType = WorkoutType.BicepsCurl;
+                            WorkoutCounting.Initialize();
+                            isInitialize = true;
+                            Console.WriteLine("speech recognized: change to biceps curl");
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
+        }
+
+        private void CreateGrammars(RecognizerInfo ri)
+        {
+            var workoutType = new Choices();
+            workoutType.Add("squat");
+            workoutType.Add("biceps curl");
+
+            var gb = new GrammarBuilder();
+            gb.Culture = ri.Culture;
+            gb.Append("change");
+            gb.Append("to");
+            gb.Append(workoutType);
+
+            var g = new Grammar(gb);
+            speechEngine.LoadGrammar(g);
+            
+            var init = new GrammarBuilder();
+            init.Culture = ri.Culture;
+            init.Append("initialize");
+
+            var i = new Grammar(init);
+            speechEngine.LoadGrammar(i);
         }
         #endregion Methods
 
@@ -273,16 +323,9 @@ namespace KinectCount01
                             RecognizerInfo ri = GetKinectRecognizer();
                             if (null != ri)
                             {
-                                this.speechEngine = new SpeechRecognitionEngine(ri.Id);
+                                speechEngine = new SpeechRecognitionEngine(ri.Id);
 
-                                var directions = new Choices();
-                                directions.Add(new SemanticResultValue("initialize", "INITIALIZE"));
-                                
-                                var gb = new GrammarBuilder { Culture = ri.Culture };
-                                gb.Append(directions);
-                                
-                                var g = new Grammar(gb);
-                                speechEngine.LoadGrammar(g);
+                                CreateGrammars(ri);
 
                                 speechEngine.SpeechRecognized += SpeechRecognized;
                                 //speechEngine.SpeechRecognitionRejected += SpeechRejected;
