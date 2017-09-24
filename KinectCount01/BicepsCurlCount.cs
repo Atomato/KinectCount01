@@ -8,14 +8,14 @@ using System.Windows.Media.Media3D; //PresentationCore 어셈블리 참조
 
 namespace KinectCount01
 {
-    public static class SquatCount
+    class BicepsCurlCount
     {
         #region Member Variables
         private static int InitialSetCount;
         private static double HeadPoint;
         private static double HipCenterPoint;
         private static int SummationCount;
-        private static bool IsHeadDown;
+        private static bool IsHandUp;
         private static int CountNumber;
         private static double ThresholdPoint;
         public static byte[] countBytes = new byte[2];
@@ -23,7 +23,7 @@ namespace KinectCount01
         #endregion Member Variables
 
         #region Methods
-        public static void Count(Point3D Head, Point3D HipCenter)
+        public static void Count(Point3D Head, Point3D HipCenter, Point3D HandRight)
         {
             if (InitialSetCount < 150)
             {
@@ -39,7 +39,7 @@ namespace KinectCount01
                         HeadPoint = HeadPoint / SummationCount;
                         HipCenterPoint = HipCenterPoint / SummationCount;
 
-                        ThresholdPoint = (HeadPoint + HipCenterPoint)/2; // 카운트 문턱
+                        ThresholdPoint = HipCenterPoint; // 카운트 문턱
                         Console.WriteLine($"Count Ready and threshold point is {ThresholdPoint,0:F0}");
                         countBytes = BitConverter.GetBytes((short) ThresholdPoint);
                     }
@@ -47,31 +47,30 @@ namespace KinectCount01
             }
             else
             {
-                CheckCount(Head); // 머리, 엉덩이 좌표 초기화 끝나면 카운트 시작
+                CheckCount(HandRight); // 머리, 엉덩이 좌표 초기화 끝나면 카운트 시작
             }
         }
 
-        private static void CheckCount(Point3D Head)
+        private static void CheckCount(Point3D HandRight)
         {
-            if (Head.Y > ThresholdPoint) // 머리가 일정 높이 아래로 카면 카운트 업
+            if (HandRight.Y < ThresholdPoint) // 오른손이 일정 높이 위로 카면 카운트 업
             {
-                if (!IsHeadDown)
+                if (!IsHandUp)
                 {
                     CountNumber++;
                     Console.WriteLine($"The current count number is {CountNumber}");
                     IsCountUp = true;
-                    IsHeadDown = true;
+                    IsHandUp = true;
                 }
             }
             else
             {
-                if (IsHeadDown)
+                if (IsHandUp)
                 {
-                    IsHeadDown = false;
+                    IsHandUp = false;
                 }
             }
         }
-
         public static void InitializeThreshold()
         {
             InitialSetCount = 0;

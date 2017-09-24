@@ -31,10 +31,22 @@ namespace KinectCount01
                 // Start listening for client requests.
                 server.Start();
 
+                // buffer index
+                const int systemBytesNum = 1;
+                const int depthOffset = systemBytesNum;
+                int skelOffset = depthOffset + sensor.EncodedDepth.Length;
+                int countOffset = skelOffset + (2 * sensor.JointPositions.Length);
+                int sendMsgLength = countOffset + 1;
+
                 // Buffer for reading data
                 Byte[] bytes = new Byte[256];
                 String data = null;
                 StringBuilder txData = new StringBuilder();
+                Byte[] sendMsg = new Byte[sendMsgLength];
+                Byte[] skelBytes;
+                Byte[] rejectMsg = new Byte[1];
+                Byte[] systemBytes = new byte[1];
+                rejectMsg[0] = 0xFF; //데이터 보낼 준비가 안될 때 보낼 메시지
 
                 // Enter the listening loop.
                 while (true)
@@ -52,7 +64,6 @@ namespace KinectCount01
                     NetworkStream stream = client.GetStream();
 
                     int i;
-
                     // Loop to receive all the data sent by the client.
                     while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
                     {
@@ -62,35 +73,54 @@ namespace KinectCount01
                         // 클라이언트에서 "y\n"를 보내면 조인트 좌표 보냄
                         if (data.Equals("y\n"))
                         {
-                            if (sensor.IsSkeletonFrameReady)
+                            if (sensor.isDepthEncodingReady && sensor.isSkeletonFrameReady)
                             {
-                                // 클라이언트에 보낼 데이터. "/"은 구분 단위
+                                systemBytes[0] = (byte)sensor.currentWorkoutType;
+                                if (sensor.isInitialize)
+                                {
+                                    systemBytes[0] |= 0x80;
+                                    Buffer.BlockCopy(systemBytes, 0, sendMsg, 0, 1);
+                                    sensor.isInitialize = false;
+                                }
+                                else
+                                {
+                                    systemBytes[0] &= 0x7F;
+                                    Buffer.BlockCopy(systemBytes, 0, sendMsg, 0, 1);
+                                }
+
+
+                                Buffer.BlockCopy(sensor.EncodedDepth, 0, sendMsg, depthOffset, sensor.EncodedDepth.Length);
+                                
+                                // 클라이언트에 보낼 스켈레톤 데이터
                                 foreach (var value in Enum.GetValues(typeof(JointType)))
                                 {
-                                    txData.Append($"{sensor.JointPositions[(int)value].X}/{sensor.JointPositions[(int)value].Y}/");
+                                    skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].X);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, skelOffset + 2*(int)value, 1);
+
+                                    skelBytes = BitConverter.GetBytes((short) sensor.JointPositions[(int)value].Y);
+                                    Buffer.BlockCopy(skelBytes, 0, sendMsg, skelOffset + 2*(int)value + 1, 1);
                                 }
-                                txData.Append($"{SquatCount.ThresholdPoint,0:F0}/{SquatCount.CountNumber}\n");
 
-                                byte[] msg = Encoding.ASCII.GetBytes(txData.ToString());
-
-                                // Send back a response.
-                                stream.Write(msg, 0, msg.Length);
-
-                                txData.Clear(); // StringBuilder 데이터 클리어
-
-                                // 카운트 업하면 콘솔에 표시
-                                if (SquatCount.IsCountUp)
+                                // 카운트 업일 때
+                                if (WorkoutCounting.isCountUp)
                                 {
-                                    Console.WriteLine($"The current count number is {SquatCount.CountNumber}");
-                                    SquatCount.IsCountUp = false;
-                                    SquatCount.CountNumber--;
+                                    WorkoutCounting.countBytes[0] |= 0x80; //마지막 비트가 카운트 업을 나타냄
+                                    Buffer.BlockCopy(WorkoutCounting.countBytes, 0, sendMsg, countOffset, 1);
+                                    WorkoutCounting.countBytes[0] &= 0x7F;
+                                    WorkoutCounting.isCountUp = false;
                                 }
-                                sensor.IsSkeletonFrameReady = false;
+                                else
+                                {
+                                    Buffer.BlockCopy(WorkoutCounting.countBytes, 0, sendMsg, countOffset, 1);
+                                } 
+                                
+                                stream.Write(sendMsg, 0, sendMsg.Length);
+                                sensor.isDepthEncodingReady = false;
+                                sensor.isSkeletonFrameReady = false;
                             }
                             else
                             {
-                                byte[] msg = Encoding.ASCII.GetBytes("n\n");
-                                stream.Write(msg, 0, msg.Length);
+                                stream.Write(rejectMsg, 0, rejectMsg.Length); //데이터 준비 안됨
                             }
                         }
                     }
@@ -102,6 +132,10 @@ namespace KinectCount01
             catch (SocketException e)
             {
                 Console.WriteLine("SocketException: {0}", e);
+            }
+            catch (System.IO.IOException e)
+            {
+                Console.WriteLine("IOException: {0}", e);
             }
             finally
             {
