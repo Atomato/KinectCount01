@@ -6,18 +6,18 @@ using System.Threading.Tasks;
 
 using Microsoft.Kinect;
 using System.Windows.Media.Media3D; //PresentationCore 어셈블리 참조
-<<<<<<< HEAD
-=======
+
 using Microsoft.Speech.AudioFormat;
 using Microsoft.Speech.Recognition;
->>>>>>> refs/remotes/origin/depth_image
+
 
 namespace KinectCount01
 {
     public enum WorkoutType
     {
         Squat = 0,
-        BicepsCurl = 1
+        BicepsCurl = 1,
+        ShoulderPress = 2
     }
 
     class KinectClass
@@ -26,9 +26,9 @@ namespace KinectCount01
         private KinectSensor _KinectDevice;
         private short[] _DepthPixelData;
         private Skeleton[] _FrameSkeletons;
-<<<<<<< HEAD
+
         public Boolean IsSkeletonFrameReady = false;
-=======
+
         public WorkoutType currentWorkoutType = WorkoutType.Squat;
         public bool isDepthEncodingReady = false;
         public bool isSkeletonFrameReady = false;
@@ -38,7 +38,7 @@ namespace KinectCount01
         /// </summary>
         private SpeechRecognitionEngine speechEngine;
         public bool isInitialize = false;
->>>>>>> refs/remotes/origin/depth_image
+
         #endregion Member Variables
 
         #region Constructor
@@ -54,7 +54,7 @@ namespace KinectCount01
         #endregion Constructor
 
         #region Methods
-<<<<<<< HEAD
+
         private void Run()
         {
             DiscoverKinect();
@@ -73,8 +73,7 @@ namespace KinectCount01
             }
         }
 
-=======
->>>>>>> refs/remotes/origin/depth_image
+
         /// <summary>
         /// 키넥트 status가 바뀌었을 때의 이벤트 핸들러
         /// </summary>
@@ -275,6 +274,12 @@ namespace KinectCount01
                             isInitialize = true;
                             Console.WriteLine("speech recognized: change to biceps curl");
                             break;
+                        case "shoulder":
+                            currentWorkoutType = WorkoutType.ShoulderPress;
+                            WorkoutCounting.Initialize();
+                            isInitialize = true;
+                            Console.WriteLine("speech recognized: change to shoulder press");
+                            break;
                         default:
                             break;
                     }
@@ -288,6 +293,7 @@ namespace KinectCount01
             var workoutType = new Choices();
             workoutType.Add("squat");
             workoutType.Add("biceps curl");
+            workoutType.Add("shoulder press");
 
             var gb = new GrammarBuilder();
             gb.Culture = ri.Culture;

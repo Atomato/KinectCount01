@@ -13,8 +13,8 @@ namespace KinectCount01
     {
         #region Member Variables
         private static int initialSetCount;
-        private static double headPoint;
-        private static double hipCenterPoint;
+        private static double bodyPoint1;
+        private static double bodyPoint2;
         private static int summationCount;
         private static double thresholdPoint;
         private static bool isOverThreshold;
@@ -33,8 +33,12 @@ namespace KinectCount01
                     SquatCount(jointPositions[(int)JointType.Head], jointPositions[(int)JointType.HipCenter]);
                     break;
                 case WorkoutType.BicepsCurl:
-                    BicepsCurlCount(jointPositions[(int)JointType.Head], jointPositions[(int)JointType.HipCenter],
-                            jointPositions[(int)JointType.HandRight]);
+                    BicepsCurlCount(jointPositions[(int)JointType.Head], jointPositions[(int)JointType.HipCenter], 
+                        jointPositions[(int)JointType.HandRight]);
+                    break;
+                case WorkoutType.ShoulderPress:
+                    ShoulderPressCount(jointPositions[(int)JointType.Head], jointPositions[(int)JointType.ShoulderCenter],
+                        jointPositions[(int)JointType.HandRight]);
                     break;
                 default:
                     break;
@@ -48,16 +52,16 @@ namespace KinectCount01
                 if (initialSetCount < 120) initialSetCount++; // 스켈레톤 만들어지고 잠시 대기
                 else // 카운트 30 동안의 머리와 엉덩이 좌표 평균 구함
                 {
-                    headPoint += head.Y;
-                    hipCenterPoint += hipCenter.Y;
+                    bodyPoint1 += head.Y;
+                    bodyPoint2 += hipCenter.Y;
                     summationCount++;
                     initialSetCount++;
                     if (initialSetCount == 150)
                     {
-                        headPoint = headPoint / summationCount;
-                        hipCenterPoint = hipCenterPoint / summationCount;
+                        bodyPoint1 = bodyPoint1 / summationCount;
+                        bodyPoint2 = bodyPoint2 / summationCount;
 
-                        thresholdPoint = (headPoint + hipCenterPoint) / 2; // 카운트 문턱
+                        thresholdPoint = (bodyPoint1 + bodyPoint2) / 2; // 카운트 문턱
                         Console.WriteLine($"Ready to count and threshold point is {thresholdPoint,0:F0}");
                         countBytes = BitConverter.GetBytes((short)thresholdPoint);
 
@@ -78,16 +82,16 @@ namespace KinectCount01
                 if (initialSetCount < 120) initialSetCount++; // 스켈레톤 만들어지고 잠시 대기
                 else // 카운트 30 동안의 머리와 엉덩이 좌표 평균 구함
                 {
-                    headPoint += head.Y;
-                    hipCenterPoint += hipCenter.Y;
+                    bodyPoint1 += head.Y;
+                    bodyPoint2 += hipCenter.Y;
                     summationCount++;
                     initialSetCount++;
                     if (initialSetCount == 150)
                     {
-                        headPoint = headPoint / summationCount;
-                        hipCenterPoint = hipCenterPoint / summationCount;
+                        bodyPoint1 = bodyPoint1 / summationCount;
+                        bodyPoint2 = bodyPoint2 / summationCount;
 
-                        thresholdPoint = (headPoint + 3*hipCenterPoint) / 4; // 카운트 문턱
+                        thresholdPoint = (bodyPoint1 + 3*bodyPoint2) / 4; // 카운트 문턱
                         Console.WriteLine($"Ready to count and threshold point is {thresholdPoint,0:F0}");
                         countBytes = BitConverter.GetBytes((short)thresholdPoint);
 
@@ -100,6 +104,37 @@ namespace KinectCount01
                 CheckCount(handRight, workoutDirection); // 머리, 엉덩이 좌표 초기화 끝나면 카운트 시작
             }
         }
+
+        private static void ShoulderPressCount(Point3D head, Point3D shoulderCenter, Point3D handRight)
+        {
+            if (initialSetCount < 150)
+            {
+                if (initialSetCount < 120) initialSetCount++; // 스켈레톤 만들어지고 잠시 대기
+                else // 카운트 30 동안의 머리와 어깨 좌표 평균 구함
+                {
+                    bodyPoint1 += head.Y;
+                    bodyPoint2 += shoulderCenter.Y;
+                    summationCount++;
+                    initialSetCount++;
+                    if (initialSetCount == 150)
+                    {
+                        bodyPoint1 = bodyPoint1 / summationCount;
+                        bodyPoint2 = bodyPoint2 / summationCount;
+
+                        thresholdPoint = bodyPoint1; // 카운트 문턱
+                        Console.WriteLine($"Ready to count and threshold point is {thresholdPoint,0:F0}");
+                        countBytes = BitConverter.GetBytes((short)thresholdPoint);
+
+                        workoutDirection = false;
+                    }
+                }
+            }
+            else
+            {
+                CheckCount(handRight, workoutDirection); // 머리, 엉덩이 좌표 초기화 끝나면 카운트 시작
+            }
+        }
+
 
         /// <summary>
         /// 
@@ -127,8 +162,8 @@ namespace KinectCount01
         public static void Initialize()
         {
             initialSetCount = 121;
-            headPoint = 0;
-            hipCenterPoint = 0;
+            bodyPoint1 = 0;
+            bodyPoint2 = 0;
             summationCount = 0;
             countNum = 0;
             thresholdPoint = 0;
